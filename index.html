@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Мой чат</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #121212; color: white; }
+        input, button { padding: 12px; margin: 8px 0; width: 100%; border-radius: 10px; border: none; font-size: 16px; }
+        input { background: #2a2a2a; color: white; }
+        button { background: #3b82f6; color: white; cursor: pointer; }
+        button.danger { background: #ef4444; }
+        button.google { background: #db4437; }
+        button.anonymous { background: #666; }
+        .message { background: #2a2a2a; margin: 8px 0; padding: 12px; border-radius: 12px; }
+        .sender { font-weight: bold; color: #90cdf4; }
+        .time { font-size: 11px; color: #94a3b8; margin-top: 5px; }
+        #chat { display: none; }
+        #error { color: #ff6b6b; margin-top: 10px; }
+        .flex { display: flex; gap: 8px; }
+        .flex input { flex: 1; }
+        .flex button { width: auto; }
+        hr { border-color: #334155; margin: 16px 0; }
+    </style>
+</head>
+<body>
+
+<h1>💬  Мой чат</h1>
+<button id="downloadBtn" style="background:#10b981;">📥 Скачать .exe</button>
+<hr>
+
+<div id="auth">
+    <h3>Вход / Регистрация</h3>
+    <input type="text" id="regName" placeholder="Ваше имя (только при регистрации)">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Пароль">
+    <button id="registerBtn">Зарегистрироваться</button>
+    <button id="loginBtn">Войти</button>
+    <div id="error"></div>
+    <hr>
+    <div class="flex">
+        <button id="googleBtn" class="google">Войти через Google</button>
+        <button id="anonymousBtn" class="anonymous">Войти как гость</button>
+    </div>
+</div>
+
+<div id="chat">
+    <div class="flex" style="justify-content: space-between;">
+        <h3>💬  Общий чат</h3>
+        <button id="logoutBtn" class="danger">Выйти</button>
+    </div>
+    <div id="messages" style="max-height: 400px; overflow-y: auto; margin: 16px 0;"></div>
+    <div class="flex">
+        <input type="text" id="messageInput" placeholder="Сообщение...">
+        <button id="sendBtn">Отправить</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+    // ===== ВСТАВЬ СВОЙ КОНФИГ ЗДЕСЬ =====
+    const firebaseConfig = {
+        apiKey: "AIzaSyBSS0KGNIdTvnJ36ud1lVjDRlEQFlUhZfA",
+        authDomain: "my-akgo-chat.firebaseapp.com",
+        projectId: "my-akgo-chat",
+        storageBucket: "my-akgo-chat.firebasestorage.app",
+        messagingSenderId: "1041994309787",
+        appId: "1:1041994309787:web:12a770f88cceae8c7a63e"
+    };
+    // =================================
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const authDiv = document.getElementById('auth');
+    const chatDiv = document.getElementById('chat');
+    const errorDiv = document.getElementById('error');
+
+    // Регистрация с именем
+    document.getElementById('registerBtn').onclick = () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        const displayName = document.getElementById('regName').value;
+        
+        if (!displayName) {
+            errorDiv.innerText = "Введите ваше имя!";
+            return;
+        }
+        
+        auth.createUserWithEmailAndPassword(email, pass)
+            .then((userCredential) => userCredential.user.updateProfile({ displayName: displayName }))
+            .then(() => {
+                errorDiv.innerText = "✅ Успех! Теперь войдите";
+                document.getElementById('regName').value = '';
+            })
+.catch(e => errorDiv.innerText = e.message);
+    };
+
+    // Вход
+    document.getElementById('loginBtn').onclick = () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch(e => errorDiv.innerText = e.message);
+    };
+
+    // Вход через Google
+    document.getElementById('googleBtn').onclick = () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider, firebase.auth.browserPopupRedirectResolver)
+            .then(() => errorDiv.innerText = "✅ Добро пожаловать!")
+            .catch(e => errorDiv.innerText = e.message);
+    };
+
+    // Анонимный вход
+    document.getElementById('anonymousBtn').onclick = () => {
+        auth.signInAnonymously()
+            .then(() => errorDiv.innerText = "✅ Вы вошли как гость")
+            .catch(e => errorDiv.innerText = e.message);
+    };
+
+    // Выход
+    document.getElementById('logoutBtn').onclick = () => auth.signOut();
+
+    // Отправка сообщения
+    document.getElementById('sendBtn').onclick = () => {
+    const user = auth.currentUser;
+    if (user) {
+        const text = document.getElementById('messageInput').value;
+        if (text.trim()) {
+            // Определяем имя и email в зависимости от типа входа
+            let displayName = user.displayName;
+            let email = user.email;
+            
+            if (user.isAnonymous) {
+                displayName = "Гость"; // Имя для анонима
+                email = "anonymous@guest.local"; // Фейковый email, чтобы не ломалось
+            }
+            
+            db.collection("messages").add({
+                text: text,
+                email: email,
+                displayName: displayName,
+                time: new Date()
+            }).then(() => {
+                document.getElementById('messageInput').value = '';
+            }).catch(e => console.error("Ошибка отправки:", e));
+        }
+    } else {
+        errorDiv.innerText = "Вы не авторизованы!";
+    }
+};
+
+    // Загрузка сообщений
+    db.collection("messages").orderBy("time").onSnapshot(snapshot => {
+    const div = document.getElementById('messages');
+    div.innerHTML = '';
+    snapshot.forEach(doc => {
+        const m = doc.data();
+        // Безопасно получаем имя: если нет displayName, берем email или ставим "Гость"
+        let senderName = m.displayName;
+        if (!senderName && m.email) {
+            senderName = m.email.split('@')[0];
+        }
+        if (!senderName) {
+            senderName = "Гость";
+        }
+        
+        // Форматируем время, если оно есть
+        let timeStr = "";
+        if (m.time) {
+            const date = m.time.toDate ? m.time.toDate() : new Date(m.time);
+            timeStr = date.toLocaleTimeString();
+        }
+        
+        div.innerHTML += `
+            <div class="message">
+                <div class="sender">${escapeHtml(senderName)}</div>
+                <div class="text">${escapeHtml(m.text)}</div>
+                <div class="time">${timeStr}</div>
+            </div>
+        `;
+    });
+    div.scrollTop = div.scrollHeight;
+});
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    document.getElementById('downloadBtn').onclick = () => alert("Ссылка на .exe появится позже");
+</script>
+
+</body>
+</html>
