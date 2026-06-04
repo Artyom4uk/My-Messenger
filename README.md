@@ -32,7 +32,50 @@ A simple and fast messenger with real-time messages.
 ## Description
 This is my own HTML messenger. Currently, there are two registration methods: 1. Google 2. @mail. Features besides authorization include instant messaging and the ability to install on PCs and phones as a PWA. It was originally created for a Russian-speaking audience. Translation and adaptation for other audiences are planned for the future. Thank you for your attention!
 
-###### #######                     ######     ############################      #####                         ###### 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##############                     ######     ############################      #####                         ###### 
 ######   #######                   ######     ############################        ######                    ######   
 ######    #######                  ######     ######                                ######                ######     
 ######      #######                ######     ######                                  ######            ######       
